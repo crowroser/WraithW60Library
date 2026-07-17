@@ -1,5 +1,6 @@
 // Wraith W60 RGB Keyboard Plugin for Signal RGB
 // VID: 0x2E3C, PID: 0xC365, Interface: 2, Usage Page: 0xFF1B
+// Uses device.send_report() with correct format for interrupt OUT
 
 export function Name()        { return "Wraith W60 Keyboard"; }
 export function Publisher()   { return "WraithW60Library"; }
@@ -24,7 +25,6 @@ export function LedPositions() {
     var p = [];
     var x;
 
-    // Row 0: 14 keys
     x = 0;
     p.push([x+u/2,u/2]);x+=u;
     for(var i=0;i<10;i++){p.push([x+u/2,u/2]);x+=u;}
@@ -32,7 +32,6 @@ export function LedPositions() {
     p.push([x+u/2,u/2]);x+=u;
     p.push([x+u,u/2]);x+=u*2;
 
-    // Row 1: 14 keys
     x = 0;
     p.push([x+u*0.75,u*1.5]);x+=u*1.5;
     for(var i=0;i<10;i++){p.push([x+u/2,u*1.5]);x+=u;}
@@ -40,7 +39,6 @@ export function LedPositions() {
     p.push([x+u/2,u*1.5]);x+=u;
     p.push([x+u/2,u*1.5]);x+=u;
 
-    // Row 2: 13 keys
     x = 0;
     p.push([x+u*0.875,u*2.5]);x+=u*1.75;
     for(var i=0;i<9;i++){p.push([x+u/2,u*2.5]);x+=u;}
@@ -48,7 +46,6 @@ export function LedPositions() {
     p.push([x+u/2,u*2.5]);x+=u;
     p.push([x+u*1.125,u*2.5]);x+=u*2.25;
 
-    // Row 3: 12 keys
     x = 0;
     p.push([x+u*1.125,u*3.5]);x+=u*2.25;
     for(var i=0;i<7;i++){p.push([x+u/2,u*3.5]);x+=u;}
@@ -57,7 +54,6 @@ export function LedPositions() {
     p.push([x+u/2,u*3.5]);x+=u;
     p.push([x+u*0.875,u*3.5]);x+=u*1.75;
 
-    // Row 4: 8 keys
     x = 0;
     p.push([x+u*0.625,u*4.5]);x+=u*1.25;
     p.push([x+u*0.625,u*4.5]);x+=u*1.25;
@@ -90,21 +86,19 @@ export function ControllableParameters() {
     ];
 }
 
-var initialized = false;
-
 export function Initialize() {
-    initialized = false;
-    // Try sending a simple backlight command first
-    testBacklight();
-    initialized = true;
+    // Send red backlight to test connectivity
+    sendTestPacket();
 }
 
-function testBacklight() {
-    // Send red backlight to test if device responds
+function sendTestPacket() {
+    // Build 65-byte packet (report ID + 64 bytes data)
     var pkt = [];
-    for (var i = 0; i < 64; i++) pkt.push(0);
     pkt[0] = 0x01;  // Report ID
     pkt[1] = 0x07;  // Backlight command
+    pkt[2] = 0x00;
+    pkt[3] = 0x00;
+    pkt[4] = 0x00;
     pkt[5] = 0x0E;  // Length
     pkt[6] = 0x00;  // Mode: Static
     pkt[7] = 0x04;
@@ -112,7 +106,9 @@ function testBacklight() {
     pkt[9] = 255;   // R
     pkt[10] = 0;    // G
     pkt[11] = 0;    // B
-    device.write(pkt, 64);
+    pkt[12] = 0;    // Speed
+    for (var i = 13; i < 65; i++) pkt.push(0);
+    device.send_report(pkt, 65);
 }
 
 export function Render() {
@@ -127,20 +123,20 @@ export function Render() {
 }
 
 export function Shutdown(s) {
-    // Send black to all
     sendAllBlack();
 }
 
 function sendAllBlack() {
     for (var c = 0; c < 8; c++) {
         var pkt = [];
-        for (var i = 0; i < 64; i++) pkt.push(0);
         pkt[0] = 0x01;
         pkt[1] = 0x09;
         pkt[2] = 0x01;
+        pkt[3] = 0x00;
         pkt[4] = c;
         pkt[5] = (c === 7) ? 0x12 : 0x36;
-        device.write(pkt, 64);
+        for (var i = 6; i < 65; i++) pkt.push(0);
+        device.send_report(pkt, 65);
     }
 }
 
@@ -159,10 +155,10 @@ function sendPerKeyColors() {
 
     for (var c = 0; c < 8; c++) {
         var pkt = [];
-        for (var i = 0; i < 64; i++) pkt.push(0);
         pkt[0] = 0x01;
         pkt[1] = 0x09;
         pkt[2] = 0x01;
+        pkt[3] = 0x00;
         pkt[4] = c;
         pkt[5] = (c === 7) ? 0x12 : 0x36;
         var keys = (c === 7) ? 6 : 18;
@@ -173,13 +169,13 @@ function sendPerKeyColors() {
             pkt[6 + i * 3 + 1] = colors[g * 3 + 1];
             pkt[6 + i * 3 + 2] = colors[g * 3 + 2];
         }
-        device.write(pkt, 64);
+        for (var i = pkt.length; i < 65; i++) pkt.push(0);
+        device.send_report(pkt, 65);
     }
 }
 
 function sendBacklight() {
     var pkt = [];
-    for (var i = 0; i < 64; i++) pkt.push(0);
     pkt[0] = 0x01;
     pkt[1] = 0x07;
     pkt[5] = 0x0E;
@@ -190,12 +186,12 @@ function sendBacklight() {
     pkt[9]  = (color >> 16) & 0xFF;
     pkt[10] = (color >> 8) & 0xFF;
     pkt[11] = color & 0xFF;
-    device.write(pkt, 64);
+    for (var i = 12; i < 65; i++) pkt.push(0);
+    device.send_report(pkt, 65);
 }
 
 function sendUnderglow() {
     var pkt = [];
-    for (var i = 0; i < 64; i++) pkt.push(0);
     pkt[0] = 0x01;
     pkt[1] = 0x08;
     pkt[5] = 0x0E;
@@ -206,7 +202,8 @@ function sendUnderglow() {
     pkt[9]  = (color >> 16) & 0xFF;
     pkt[10] = (color >> 8) & 0xFF;
     pkt[11] = color & 0xFF;
-    device.write(pkt, 64);
+    for (var i = 12; i < 65; i++) pkt.push(0);
+    device.send_report(pkt, 65);
 }
 
 export function ConflictingProcesses() { return []; }
