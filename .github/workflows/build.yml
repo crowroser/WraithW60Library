@@ -50,28 +50,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install build tools
+      - name: Install build tools and dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake g++ pkg-config make git
+          sudo apt-get install -y cmake g++ pkg-config make git \
+            libudev-dev libusb-1.0-0-dev
 
       - name: Install hidapi from source
         run: |
-          sudo apt-get install -y libudev-dev
           cd /tmp
           git clone --depth 1 https://github.com/libusb/hidapi.git
           cd hidapi
-          ls -la *.sh *.ac *.am 2>/dev/null || true
-          if [ -f configure.ac ]; then
-            autoreconf -fi
-            ./configure --prefix=/usr
-            make -j$(nproc)
-            sudo make install
-          elif [ -f CMakeLists.txt ]; then
-            cmake -B build -DCMAKE_INSTALL_PREFIX=/usr
-            cmake --build build -j$(nproc)
-            sudo cmake --install build
-          fi
+          autoreconf -fi
+          ./configure --prefix=/usr
+          make -j$(nproc)
+          sudo make install
           sudo ldconfig
 
       - name: Build
