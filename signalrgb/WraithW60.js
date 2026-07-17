@@ -1,10 +1,10 @@
 // Wraith W60 RGB Keyboard Plugin for Signal RGB
 // VID: 0x2E3C, PID: 0xC365, Interface: 2, Usage Page: 0xFF1B
-// Uses device.write() (Output report / interrupt OUT) â€” NOT device.send_report()
+// Uses device.write() (Output report / interrupt OUT) Ã¢â‚¬â€ NOT device.send_report()
 //
-// FIX: device.color(x,y) bir [r,g,b] ARRAY dÃ¶ndÃ¼rÃ¼yor, packed integer DEÄÄ°L.
-// Eski kod bit kaydÄ±rma (>>16 vs) yapÄ±yordu, bu array Ã¼zerinde NaN'a dÃ¼ÅŸÃ¼p
-// her zaman (0,0,0) siyah Ã¼retiyordu. ArtÄ±k colorToRGB() ile doÄŸru okunuyor.
+// FIX: device.color(x,y) bir [r,g,b] ARRAY dÃƒÂ¶ndÃƒÂ¼rÃƒÂ¼yor, packed integer DEÃ„ÂÃ„Â°L.
+// Eski kod bit kaydÃ„Â±rma (>>16 vs) yapÃ„Â±yordu, bu array ÃƒÂ¼zerinde NaN'a dÃƒÂ¼Ã…Å¸ÃƒÂ¼p
+// her zaman (0,0,0) siyah ÃƒÂ¼retiyordu. ArtÃ„Â±k colorToRGB() ile doÃ„Å¸ru okunuyor.
 
 function dlog(msg) {
     try {
@@ -18,7 +18,7 @@ function dlog(msg) {
     } catch (e) {}
 }
 
-// device.color() farklÄ± SignalRGB sÃ¼rÃ¼mlerinde farklÄ± formatlar dÃ¶ndÃ¼rebiliyor:
+// device.color() farklÃ„Â± SignalRGB sÃƒÂ¼rÃƒÂ¼mlerinde farklÃ„Â± formatlar dÃƒÂ¶ndÃƒÂ¼rebiliyor:
 // - [r,g,b] array (bizim durumumuzda bu)
 // - {r,g,b} nesnesi
 // - 0xRRGGBB packed integer
@@ -293,7 +293,7 @@ function sendUnderglow() {
 }
 
 export function ImageUrl() {
-    return "https://raw.githubusercontent.com/crowroser/WraithW60Library/master/signalrgb/klavye.png";
+    return "https://raw.githubusercontent.com/crowroser/WraithW60Library/master/signalrgb/klavye_square.png";
 }
 
 export function ConflictingProcesses() { return []; }
