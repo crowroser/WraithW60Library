@@ -1,46 +1,104 @@
-﻿// Wraith W60 RGB Keyboard Plugin for Signal RGB
+// Wraith W60 RGB Keyboard Plugin for Signal RGB
 // VID: 0x2E3C, PID: 0xC365, Interface: 2, Usage Page: 0xFF1B
+// Uses device.write() (Interrupt OUT) instead of device.send_report() (Feature Report)
 
 export function Name()        { return "Wraith W60 Keyboard"; }
 export function Publisher()   { return "WraithW60Library"; }
 export function VendorId()    { return 0x2E3C; }
 export function ProductId()   { return 0xC365; }
 export function Type()        { return "hid"; }
-export function Size()        { return [15, 6]; } // 60% keyboard layout
 
-// LED positions in canvas coordinates (15 columns x 6 rows)
+// Canvas size: 15 units wide, 6 units tall (each unit = 40px)
+export function Size()        { return [600, 240]; }
+
+// Key names matching physical layout
 export function LedNames() {
     return [
-        // Row 0: Number row (14 keys)
+        // Row 0 (14 keys): Esc, 1-0, -, =, Backspace(2u)
         "Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "Minus", "Equal", "Backspace",
-        // Row 1: QWERTY row (13 keys)
-        "Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "Ğ", "Ü",
-        // Row 2: Home row (13 keys)
-        "CapsLock", "A", "S", "D", "F", "G", "H", "J", "K", "L", "Ş", "İ", "Enter",
-        // Row 3: Shift row (12 keys)
-        "Left Shift", "Z", "X", "C", "V", "B", "N", "M", "Ö", "Ç", "Slash", "Right Shift",
-        // Row 4: Bottom row (8 keys)
-        "Left Ctrl", "Left Win", "Left Alt", "Space", "Right Alt", "Menu", "Right Ctrl", "Fn"
+        // Row 1 (13 keys): Tab(1.5u), Q-P, [{, ]}, \
+        "Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "Left Brace", "Right Brace",
+        // Row 2 (13 keys): Caps(1.75u), A-L, ;:, '", Enter(2.25u)
+        "Caps Lock", "A", "S", "D", "F", "G", "H", "J", "K", "L", "Semicolon", "Quote", "Enter",
+        // Row 3 (12 keys): LShift(2.25u), Z-M, ,<, .>, /?, RShift(1.75u)
+        "Left Shift", "Z", "X", "C", "V", "B", "N", "M", "Comma", "Period", "Slash", "Right Shift",
+        // Row 4 (8 keys): LCtrl(1.25u), LWin(1.25u), LAlt(1.25u), Space(6.25u), RAlt(1.25u), Menu(1u), RCtrl(1.25u), Fn(1u)
+        "Left Control", "Left Windows", "Left Alt", "Space", "Right Alt", "Application", "Right Control", "Function"
     ];
 }
 
+// LED positions - each key is positioned by its center in pixels
+// Canvas is 600x240, each unit = 40px
+// Standard 60% layout with proper key widths
 export function LedPositions() {
-    return [
-        // Row 0
-        [0,0], [1,0], [2,0], [3,0], [4,0], [5,0], [6,0], [7,0], [8,0], [9,0], [10,0], [11,0], [12,0], [13,0],
-        // Row 1
-        [0,1], [1,1], [2,1], [3,1], [4,1], [5,1], [6,1], [7,1], [8,1], [9,1], [10,1], [11,1], [12,1],
-        // Row 2
-        [0,2], [1,2], [2,2], [3,2], [4,2], [5,2], [6,2], [7,2], [8,2], [9,2], [10,2], [11,2], [12,2],
-        // Row 3
-        [0,3], [1,3], [2,3], [3,3], [4,3], [5,3], [6,3], [7,3], [8,3], [9,3], [10,3], [11,3],
-        // Row 4
-        [0,4], [1,4], [2,4], [3,4], [4,4], [5,4], [6,4], [7,4]
-    ];
+    var u = 40; // unit size in pixels
+    var positions = [];
+
+    // Row 0: Esc(1u), 1-0(10x1u), -(1u), =(1u), Bksp(2u) = 14 keys
+    // Total width: 1+10+1+1+2 = 15u = 600px
+    var x = 0;
+    positions.push([x + u/2, u/2]); x += u;      // Esc
+    for (var i = 0; i < 10; i++) {                 // 1-0
+        positions.push([x + u/2, u/2]);
+        x += u;
+    }
+    positions.push([x + u/2, u/2]); x += u;       // -
+    positions.push([x + u/2, u/2]); x += u;       // =
+    positions.push([x + u, u/2]); x += u*2;       // Backspace (2u wide)
+
+    // Row 1: Tab(1.5u), Q-P(10x1u), [{(1u), ]}(1u), \(1u) = 13 keys
+    // Total width: 1.5+10+1+1+1 = 14.5u... need to adjust
+    x = 0;
+    positions.push([x + u*0.75, u*1.5]); x += u*1.5;  // Tab (1.5u)
+    for (var i = 0; i < 10; i++) {                        // Q-P
+        positions.push([x + u/2, u*1.5]);
+        x += u;
+    }
+    positions.push([x + u/2, u*1.5]); x += u;            // [{
+    positions.push([x + u/2, u*1.5]); x += u;            // ]}
+    positions.push([x + u/2, u*1.5]); x += u;            // \
+
+    // Row 2: Caps(1.75u), A-L(9x1u), ;:(1u), '"(1u), Enter(2.25u) = 13 keys
+    // Total width: 1.75+9+1+1+2.25 = 15u
+    x = 0;
+    positions.push([x + u*0.875, u*2.5]); x += u*1.75;  // Caps (1.75u)
+    for (var i = 0; i < 9; i++) {                         // A-L
+        positions.push([x + u/2, u*2.5]);
+        x += u;
+    }
+    positions.push([x + u/2, u*2.5]); x += u;            // ;:
+    positions.push([x + u/2, u*2.5]); x += u;            // '
+    positions.push([x + u*1.125, u*2.5]); x += u*2.25;  // Enter (2.25u)
+
+    // Row 3: LShift(2.25u), Z-M(7x1u), ,<(1u), .>(1u), /?(1u), RShift(1.75u) = 12 keys
+    // Total width: 2.25+7+1+1+1+1.75 = 14u... need 15u
+    x = 0;
+    positions.push([x + u*1.125, u*3.5]); x += u*2.25;  // LShift (2.25u)
+    for (var i = 0; i < 7; i++) {                         // Z-M
+        positions.push([x + u/2, u*3.5]);
+        x += u;
+    }
+    positions.push([x + u/2, u*3.5]); x += u;            // ,<
+    positions.push([x + u/2, u*3.5]); x += u;            // .>
+    positions.push([x + u/2, u*3.5]); x += u;            // /?
+    positions.push([x + u*0.875, u*3.5]); x += u*1.75;  // RShift (1.75u)
+
+    // Row 4: LCtrl(1.25u), LWin(1.25u), LAlt(1.25u), Space(6.25u), RAlt(1.25u), Menu(1u), RCtrl(1.25u), Fn(1u) = 8 keys
+    // Total width: 1.25+1.25+1.25+6.25+1.25+1+1.25+1 = 14.5u... adjust
+    x = 0;
+    positions.push([x + u*0.625, u*4.5]); x += u*1.25;  // LCtrl (1.25u)
+    positions.push([x + u*0.625, u*4.5]); x += u*1.25;  // LWin (1.25u)
+    positions.push([x + u*0.625, u*4.5]); x += u*1.25;  // LAlt (1.25u)
+    positions.push([x + u*3.125, u*4.5]); x += u*6.25;  // Space (6.25u)
+    positions.push([x + u*0.625, u*4.5]); x += u*1.25;  // RAlt (1.25u)
+    positions.push([x + u/2, u*4.5]); x += u;            // Menu (1u)
+    positions.push([x + u*0.625, u*4.5]); x += u*1.25;  // RCtrl (1.25u)
+    positions.push([x + u/2, u*4.5]); x += u;            // Fn (1u)
+
+    return positions;
 }
 
 // Physical LED index mapping (verified via hardware testing)
-// Maps logical LED index to physical HID chunk/key index
 const PHYSICAL_MAP = [
     // Row 0: Number row
     22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 36,
@@ -63,16 +121,12 @@ export function Validate(endpoint) {
 export function ControllableParameters() {
     return [
         { "property": "LightingZone", "label": "Lighting Zone", "type": "combobox",
-          "values": ["Per-Key", "Backlight", "Underglow"], "default": "Per-Key" },
-        { "property": "BacklightMode", "label": "Backlight Mode", "type": "combobox",
-          "values": ["Static", "Breathe", "Wave", "Neon", "Sparkle", "Reactive", "Ripple"],
-          "default": "Static" }
+          "values": ["Per-Key", "Backlight", "Underglow"], "default": "Per-Key" }
     ];
 }
 
 // Initialize device
 export function Initialize() {
-    // Send all-black to clear any previous state
     sendAllBlack();
 }
 
@@ -89,70 +143,68 @@ export function Render() {
 
 // Shutdown handler
 export function Shutdown(SystemSuspending) {
-    if (SystemSuspending) {
-        sendAllBlack();
-    }
+    sendAllBlack();
 }
 
-// Send all-black to clear state
+// Send all-black using device.write() (Interrupt OUT)
 function sendAllBlack() {
-    for (let chunk = 0; chunk < 8; chunk++) {
-        let packet = new Array(65).fill(0);
+    for (var chunk = 0; chunk < 8; chunk++) {
+        var packet = [];
         packet[0] = 0x01;  // Report ID
         packet[1] = 0x09;  // Per-key command
         packet[2] = 0x01;  // Sub-command
         packet[4] = chunk; // Chunk index
         packet[5] = (chunk === 7) ? 0x12 : 0x36; // Length
-        device.send_report(packet, 65);
+        // Rest is zeros (black)
+        for (var i = packet.length; i < 64; i++) packet.push(0);
+        device.write(packet, 64);
     }
 }
 
-// Send per-key colors from canvas
+// Send per-key colors using device.write() (Interrupt OUT)
 function sendPerKeyColors() {
-    // Build 126-key color array
-    let colors = new Array(126 * 3).fill(0);
+    var colors = new Array(126 * 3).fill(0);
 
-    for (let i = 0; i < PHYSICAL_MAP.length; i++) {
-        let physIdx = PHYSICAL_MAP[i];
-        let pos = LedPositions()[i];
-        let color = device.color(pos[0], pos[1]);
+    for (var i = 0; i < PHYSICAL_MAP.length; i++) {
+        var physIdx = PHYSICAL_MAP[i];
+        var pos = LedPositions()[i];
+        var color = device.color(pos[0], pos[1]);
 
-        // Parse hex color
-        let r = (color >> 16) & 0xFF;
-        let g = (color >> 8) & 0xFF;
-        let b = color & 0xFF;
+        var r = (color >> 16) & 0xFF;
+        var g = (color >> 8) & 0xFF;
+        var b = color & 0xFF;
 
         colors[physIdx * 3] = r;
         colors[physIdx * 3 + 1] = g;
         colors[physIdx * 3 + 2] = b;
     }
 
-    // Send all 8 chunks
-    for (let chunk = 0; chunk < 8; chunk++) {
-        let packet = new Array(65).fill(0);
+    for (var chunk = 0; chunk < 8; chunk++) {
+        var packet = [];
         packet[0] = 0x01;  // Report ID
         packet[1] = 0x09;  // Per-key command
         packet[2] = 0x01;  // Sub-command
         packet[4] = chunk; // Chunk index
         packet[5] = (chunk === 7) ? 0x12 : 0x36; // Length
 
-        let keysInChunk = (chunk === 7) ? 6 : 18;
-        let startKey = chunk * 18;
+        var keysInChunk = (chunk === 7) ? 6 : 18;
+        var startKey = chunk * 18;
 
-        for (let i = 0; i < keysInChunk; i++) {
-            let globalIdx = startKey + i;
+        for (var i = 0; i < keysInChunk; i++) {
+            var globalIdx = startKey + i;
             packet[6 + i * 3] = colors[globalIdx * 3];
             packet[6 + i * 3 + 1] = colors[globalIdx * 3 + 1];
             packet[6 + i * 3 + 2] = colors[globalIdx * 3 + 2];
         }
 
-        device.send_report(packet, 65);
+        for (var j = packet.length; j < 64; j++) packet.push(0);
+        device.write(packet, 64);
     }
 }
 
-// Send backlight color
+// Send backlight color using device.write()
 function sendBacklight() {
-    let packet = new Array(65).fill(0);
+    var packet = [];
     packet[0] = 0x01;  // Report ID
     packet[1] = 0x07;  // Backlight command
     packet[5] = 0x0E;  // Length
@@ -160,18 +212,18 @@ function sendBacklight() {
     packet[7] = 0x04;
     packet[8] = 0x04;  // Zone type: Backlight
 
-    // Get color from canvas center
-    let color = device.color(7, 3);
-    packet[9] = (color >> 16) & 0xFF;  // R
-    packet[10] = (color >> 8) & 0xFF;  // G
-    packet[11] = color & 0xFF;          // B
+    var color = device.color(300, 120);
+    packet[9] = (color >> 16) & 0xFF;
+    packet[10] = (color >> 8) & 0xFF;
+    packet[11] = color & 0xFF;
 
-    device.send_report(packet, 65);
+    for (var i = packet.length; i < 64; i++) packet.push(0);
+    device.write(packet, 64);
 }
 
-// Send underglow color
+// Send underglow color using device.write()
 function sendUnderglow() {
-    let packet = new Array(65).fill(0);
+    var packet = [];
     packet[0] = 0x01;  // Report ID
     packet[1] = 0x08;  // Underglow command
     packet[5] = 0x0E;  // Length
@@ -179,21 +231,16 @@ function sendUnderglow() {
     packet[7] = 0x04;
     packet[8] = 0x03;  // Zone type: Underglow
 
-    // Get color from canvas center
-    let color = device.color(7, 3);
-    packet[9] = (color >> 16) & 0xFF;  // R
-    packet[10] = (color >> 8) & 0xFF;  // G
-    packet[11] = color & 0xFF;          // B
+    var color = device.color(300, 120);
+    packet[9] = (color >> 16) & 0xFF;
+    packet[10] = (color >> 8) & 0xFF;
+    packet[11] = color & 0xFF;
 
-    device.send_report(packet, 65);
+    for (var i = packet.length; i < 64; i++) packet.push(0);
+    device.write(packet, 64);
 }
 
 // Conflicting software
 export function ConflictingProcesses() {
     return [];
-}
-
-// Device image URL (optional)
-export function ImageUrl() {
-    return "";
 }
