@@ -16,7 +16,7 @@ export function LedNames() {
         // Row 0 (14 keys)
         "Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "Minus", "Equal", "Backspace",
         // Row 1 (13 keys)
-        "Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "Left Brace", "Right Brace",
+        "Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "Left Brace", "Right Brace", "Backslash",
         // Row 2 (13 keys)
         "Caps Lock", "A", "S", "D", "F", "G", "H", "J", "K", "L", "Semicolon", "Quote", "Enter",
         // Row 3 (12 keys)
