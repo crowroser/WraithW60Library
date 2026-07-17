@@ -1,429 +1,259 @@
-# Wraith W60 Library
+﻿# Wraith W60 Keyboard RGB Controller
 
-Wraith W60 mekanik klavyesi için C++ kontrol kütüphanesi, CLI aracı ve OpenRGB entegrasyonu.
-
-## Özellikler
-
-- USB HID üzerinden klavye iletişimi
-- Backlight (arka ışık) kontrolü: mod, renk, hız
-- Underglow (alt aydınlatma) kontrolü: mod, renk, hız
-- Per-key RGB renk kontrolü (126 tuş)
-- 15 farklı aydınlatma modu
-- OpenRGB eklentisi ile uyumlu
-- C++17 kütüphane + komut satırı aracı
-
-## Kurulum
-
-### Bağımlılıklar
-
-- C++17 uyumlu derleyici (GCC, Clang, MSVC)
-- CMake 3.16+
-- [hidapi](https://github.com/libusb/hidapi) kütüphanesi
-
-#### Linux (Debian/Ubuntu)
-
-```bash
-sudo apt install cmake g++ libhidapi-dev
-```
-
-#### Windows (vcpkg)
-
-```bash
-vcpkg install hidapi
-```
-
-#### macOS
-
-```bash
-brew install cmake hidapi
-```
-
-### Derleme
-
-```bash
-mkdir build && cd build
-cmake ..
-cmake --build .
-```
-
-### Opsiyonel CMake Seçenekleri
-
-| Seçenek | Varsayılan | Açıklama |
-|---------|------------|----------|
-| `WRAITH_BUILD_CLI` | ON | CLI aracını derle |
-| `WRAITH_BUILD_OPENRGB` | OFF | OpenRGB eklentisini derle |
-| `WRAITH_BUILD_TESTS` | OFF | Testleri derle |
-
-```bash
-# OpenRGB entegrasyonu ile derleme
-cmake .. -DWRAITH_BUILD_OPENRGB=ON
-```
+[English](#english) | [Türkçe](#türkçe)
 
 ---
 
-## CLI Aracı Kullanım Kılavuzu
+## English
 
-`wraith_cli` komut satırı aracı, klavyenizi terminallerden kontrol etmenizi sağlar. Tüm komutlar `wraith_cli <komut> [parametreler]` formatındadır.
+A standalone C++ library, CLI tool, and OpenRGB driver for controlling the **Wraith W60** mechanical keyboard's RGB lighting.
 
-### Temel Komutlar
+### Features
 
-#### 1. `enumerate` - Bağlı Cihazları Listele
+- **Backlight** (under-key LEDs): 16 lighting modes
+- **Underglow** (frame LEDs): Static, breathe, wave, neon
+- **Per-key RGB**: Individual color control for 126 LEDs (8 chunks)
+- **OpenRGB integration**: Ready-to-use driver files
+- **Cross-platform**: Windows, Linux
 
-Bilgisayara bağlı tüm Wraith W60 cihazlarını bulur ve gösterir.
+### Quick Start
+
+#### Download
+
+Download the latest release from [GitHub Releases](../../releases):
+
+- **Windows**: `wraith-w60-windows-x64.zip` — portable, no installation needed
+- **Linux**: `wraith-w60-linux-x64.tar.gz` — extract and run
+
+#### Windows
+
+```cmd
+cd wraith-w60-windows-x64
+wraith.exe backlight static 255 0 0
+```
+
+#### Linux
 
 ```bash
-wraith_cli enumerate
+chmod +x wraith
+./wraith backlight static 255 0 0
 ```
 
-**Çıktı örneği:**
-```
-Found 1 device(s):
-  VID: 0x2e3c PID: 0xc365 Serial: ABC123 Path: /dev/hidraw0
-```
-
-Bu komut cihaza bağlanmadan çalışır. Bağlantı sorunlarında önce bu komutu çalıştırın.
-
-#### 2. `info` - Cihaz Bilgisi
-
-Bağlı cihazın detaylı bilgilerini gösterir (VID, PID, seri numarası).
-
-```bash
-wraith_cli info
-```
-
-**Çıktı örneği:**
-```
-Connected to Wraith W60 (Serial: ABC123)
-  VID:     0x2e3c
-  PID:     0xc365
-  Serial:  ABC123
-```
-
-#### 3. `modes` - Aydınlatma Modlarını Listele
-
-Kullanılabilir tüm aydınlatma modlarını ve özelliklerini gösterir.
-
-```bash
-wraith_cli modes
-```
-
-**Çıktı örneği:**
-```
-Available lighting modes:
-  static (0x00) - Static
-  breathe (0x01) - Breathing [speed]
-  wave (0x02) - Wave [speed]
-  neon (0x03) - Neon
-  ...
-```
-
-### Aydınlatma Kontrolleri
-
-#### 4. `backlight` - Arka Işık Ayarlama
-
-Klavyenin arka ışık (backlight) aydınlatmasını ayarlar.
-
-**Sözdizimi:**
-```bash
-wraith_cli backlight <mod> <R> <G> <B> [hız]
-```
-
-- **mod**: Aydınlatma modu adı (static, breathe, wave, vb.)
-- **R, G, B**: Renk değerleri (0-255 arası)
-- **hız** (isteğe bağlı): Animasyon hızı (0-255, varsayılan: 128)
-
-**Örnekler:**
-```bash
-# Sabit kırmızı arka ışık
-wraith_cli backlight static 255 0 0
-
-# Nefes alma efekti, mavi renk
-wraith_cli backlight breathe 0 0 255
-
-# Dalga efekti, yeşil renk, hızlı
-wraith_cli backlight wave 0 255 0 200
-
-# Neon efekti, mor renk, yavaş
-wraith_cli backlight neon 128 0 255 50
-```
-
-#### 5. `underglow` - Alt Aydınlatma Ayarlama
-
-Klavyenin alt aydınlatma (underglow) bölgesini ayarlar.
-
-**Sözdizimi:**
-```bash
-wraith_cli underglow <mod> <R> <G> <B> [hız]
-```
-
-**Örnekler:**
-```bash
-# Sabit beyaz alt aydınlatma
-wraith_cli underglow static 255 255 255
-
-# Tepkili mod, kırmızı
-wraith_cli underglow reactive 255 0 0
-
-# Dalga efekti, renk geçişli
-wraith_cli underglow wave 0 128 255 160
-```
-
-### Tuş Kontrolleri
-
-#### 6. `key` - Tek Tuş Rengi Değiştirme
-
-Belirli bir tuşun rengini ayarlar.
-
-**Sözdizimi:**
-```bash
-wraith_cli key <tuş_indeksi> <R> <G> <B>
-```
-
-- **tuş_indeksi**: 0-125 arası tuş numarası (0 = Esc, 1 = F1, vb.)
-
-**Örnekler:**
-```bash
-# Tuş 0 (Esc) kırmızı yap
-wraith_cli key 0 255 0 0
-
-# Tuş 10 (Enter civarı) mavi yap
-wraith_cli key 10 0 0 255
-
-# Tuş 50 (boşluk tuşu civarı) yeşil yap
-wraith_cli key 50 0 255 0
-```
-
-#### 7. `all` - Tüm Tuşları Tek Renge Boyama
-
-126 tuşun hepsini aynı renge ayarlar.
-
-**Sözdizimi:**
-```bash
-wraith_cli all <R> <G> <B>
-```
-
-**Örnekler:**
-```bash
-# Tüm tuşları beyaz yap
-wraith_cli all 255 255 255
-
-# Tüm tuşları kırmızı yap
-wraith_cli all 255 0 0
-
-# Tüm tuşları kapat (siyah)
-wraith_cli all 0 0 0
-```
-
-#### 8. `range` - Tuş Aralığı Renklendirme
-
-Belirli bir aralıktaki tuşları aynı renge boyar.
-
-**Sözdizimi:**
-```bash
-wraith_cli range <başlangıç> <bitiş> <R> <G> <B>
-```
-
-- **başlangıç**: İlk tuş indeksi (dahil)
-- **bitiş**: Son tuş indeksi (dahil)
-
-**Örnekler:**
-```bash
-# İlk 13 tuşu (Esc - F12 arası) kırmızı yap
-wraith_cli range 0 12 255 0 0
-
-# QWERTY satırını mavi yap (tuş 13-24 arası)
-wraith_cli range 13 24 0 0 255
-
-# Son 10 tuşu yeşil yap
-wraith_cli range 116 125 0 255 0
-```
-
-### Uygulama
-
-#### 9. `apply` - Değişiklikleri Uygula
-
-Yapılan tüm renk ve mod değişikliklerini klavyeye gönderir.
-
-```bash
-wraith_cli apply
-```
-
-**Önemli:** `key`, `all`, `range` komutları sadece dahili tamponu değiştirir. Değişikliklerin klavyeye yansıması için `apply` komutunu çalıştırmanız gerekir.
-
-### Hızlı Başlangıç Örnekleri
-
-#### Tüm Klavyeyi Kırmızı Yap
-```bash
-wraith_cli backlight static 255 0 0
-wraith_cli underglow static 255 0 0
-wraith_cli all 255 0 0
-wraith_cli apply
-```
-
-#### Dalga Efektli Renkli Klavye
-```bash
-wraith_cli backlight wave 0 128 255
-wraith_cli underglow wave 255 0 128
-wraith_cli apply
-```
-
-#### Oyun Modu (WASD Kırmızı, Geri Kalan Mavi)
-```bash
-wraith_cli all 0 0 255
-wraith_cli range 17 19 255 0 0
-wraith_cli key 24 255 0 0
-wraith_cli apply
-```
-
-#### Sessiz Mod (Düşük Işık)
-```bash
-wraith_cli backlight static 10 10 10
-wraith_cli underglow static 5 5 5
-wraith_cli all 10 10 10
-wraith_cli apply
-```
-
-### Komut Özeti Tablosu
-
-| Komut | Sözdizimi | Açıklama |
-|-------|-----------|----------|
-| `enumerate` | `wraith_cli enumerate` | Bağlı cihazları listele |
-| `info` | `wraith_cli info` | Cihaz bilgisi göster |
-| `modes` | `wraith_cli modes` | Aydınlatma modlarını listele |
-| `backlight` | `wraith_cli backlight <mod> <R> <G> <B> [hız]` | Arka ışık ayarla |
-| `underglow` | `wraith_cli underglow <mod> <R> <G> <B> [hız]` | Alt aydınlatma ayarla |
-| `key` | `wraith_cli key <index> <R> <G> <B>` | Tek tuş rengi |
-| `all` | `wraith_cli all <R> <G> <B>` | Tüm tuşları boyama |
-| `range` | `wraith_cli range <baş> <bit> <R> <G> <B>` | Tuş aralığı |
-| `apply` | `wraith_cli apply` | Değişiklikleri uygula |
-
-### Hata Durumları
-
-| Hata | Sebep | Çözüm |
-|------|-------|-------|
-| `No Wraith W60 device found` | Cihaz bağlı değil | USB kablosunu kontrol edin |
-| `Device not found` | Cihaz tanınamadı | `wraith_cli enumerate` ile kontrol edin |
-| `Send failed` | Veri gönderilemedi | USB bağlantısını kontrol edin |
-| `Permission denied` | Yetki hatası | Linux'ta `sudo` kullanın veya udev kuralı ekleyin |
-
-#### Linux udev Kuralı (Opsiyonel)
-
-Linux'ta root olmadan erişim için:
-
-```bash
-sudo nano /etc/udev/rules.d/99-wraith-w60.rules
-```
-
-İçeriğe şunu ekleyin:
-```
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2e3c", ATTRS{idProduct}=="c365", MODE="0666"
-```
-
-Sonra:
-```bash
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-```
-
----
-
-## Kütüphane Kullanımı (C++)
+### Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `backlight <mode> <R> <G> <B> [speed]` | Set backlight | `backlight static 255 0 0` |
+| `underglow <mode> <R> <G> <B> [speed]` | Set underglow | `underglow breathe 0 0 255` |
+| `key <index> <R> <G> <B>` | Set single key | `key 110 0 0 255` |
+| `all <R> <G> <B>` | Set all keys | `all 255 255 255` |
+| `range <start> <end> <R> <G> <B>` | Set key range | `range 0 12 255 0 0` |
+| `enumerate` | List devices | `enumerate` |
+| `modes` | List modes | `modes` |
+
+### Lighting Modes
+
+| Mode | Value | Features |
+|------|-------|----------|
+| `static` | 0x00 | Color |
+| `breathe` | 0x01 | Color + Speed |
+| `wave` | 0x02 | Speed + Direction |
+| `neon` | 0x03 | Speed |
+| `sparkle` | 0x04 | Speed |
+| `reactive` | 0x07 | Color + Speed |
+| `ripple` | 0x0A | Color + Speed |
+
+### Key Indices (Verified)
+
+| Key | Physical Index |
+|-----|---------------|
+| LCtrl | 110 |
+| RCtrl | 121 |
+| Menu | 120 |
+| Fn | 122 |
+
+### Device Info
+
+| Property | Value |
+|----------|-------|
+| VID | 0x2E3C |
+| PID | 0xC365 |
+| Interface | 2 |
+| Usage Page | 0xFF1B |
+| Usage | 0x91 |
+| Report ID | 0x01 |
+| Packet Size | 64 bytes |
+
+### C++ API
 
 ```cpp
 #include "wraith/WraithW60.h"
 
-using namespace wraith;
+auto device = wraith::WraithW60::openDevice();
 
-// Cihazları listele
-auto devices = WraithW60::enumerateDevices();
+// Set backlight to red
+device->setBacklight(wraith::LightingMode::Static, 255, 0, 0);
 
-// Cihaza bağlan
-auto keyboard = WraithW60::openDevice();
-if (!keyboard) {
-    // Hata yönetimi
-    return;
-}
+// Set underglow to blue
+device->setUnderglow(wraith::LightingMode::Breathe, 0, 0, 255);
 
-// Arka ışık: sabit kırmızı
-keyboard->setBacklight(LightingMode::Static, 255, 0, 0);
+// Set LCtrl to blue
+device->setKeyColor(110, 0, 0, 255);
 
-// Underglow: dalga efekti, yeşil
-keyboard->setUnderglow(LightingMode::Wave, 0, 255, 0, 0x80);
+// Set all keys to white
+std::vector<wraith::Color> colors(126, wraith::Color(255, 255, 255));
+device->setAllKeys(colors);
 
-// Tek tuş rengi
-keyboard->setKeyColor(0, 0, 0, 255);  // Tuş 0: mavi
+device->apply();
+```
+
+### Building from Source
+
+```bash
+# Install dependencies (Linux)
+sudo apt-get install cmake g++ libhidapi-dev
+
+# Build
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+
+# Windows (MSYS2 UCRT64)
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
+### OpenRGB Integration
+
+See [docs/OPENRGB.md](docs/OPENRGB.md) for detailed instructions.
+
+### License
+
+GPL-2.0-or-later
+
+---
+
+## Türkçe
+
+**Wraith W60** mekanik RGB klavyesinin aydınlatmasını kontrol etmek için bağımsız C++ kütüphanesi, CLI aracı ve OpenRGB sürücüsü.
+
+### Özellikler
+
+- **Backlight** (tuş üstü LED): 16 aydınlatma modu
+- **Underglow** (kasa LED): Statik, nefes, dalga, neon
+- **Per-key RGB**: 126 LED için tek tek renk kontrolü (8 chunk)
+- **OpenRGB entegrasyonu**: Hazır sürücü dosyaları
+- **Cross-platform**: Windows, Linux
+
+### Hızlı Başlangıç
+
+#### İndirme
+
+[GitHub Releases](../../releases) adresinden en son sürümü indirin:
+
+- **Windows**: `wraith-w60-windows-x64.zip` — portatif, kurulum gerektirmez
+- **Linux**: `wraith-w60-linux-x64.tar.gz` — çıkarın ve çalıştırın
+
+#### Windows
+
+```cmd
+cd wraith-w60-windows-x64
+wraith.exe backlight static 255 0 0
+```
+
+#### Linux
+
+```bash
+chmod +x wraith
+./wraith backlight static 255 0 0
+```
+
+### Komutlar
+
+| Komut | Açıklama | Örnek |
+|-------|----------|-------|
+| `backlight <mode> <R> <G> <B> [speed]` | Backlight ayarla | `backlight static 255 0 0` |
+| `underglow <mode> <R> <G> <B> [speed]` | Underglow ayarla | `underglow breathe 0 0 255` |
+| `key <index> <R> <G> <B>` | Tek tuş renk | `key 110 0 0 255` |
+| `all <R> <G> <B>` | Tüm tuşlar | `all 255 255 255` |
+| `range <start> <end> <R> <G> <B>` | Tuş aralığı | `range 0 12 255 0 0` |
+| `enumerate` | Cihazları listele | `enumerate` |
+| `modes` | Modları listele | `modes` |
+
+### Aydınlatma Modları
+
+| Mod | Değer | Özellik |
+|-----|-------|---------|
+| `static` | 0x00 | Renk |
+| `breathe` | 0x01 | Renk + Hız |
+| `wave` | 0x02 | Hız + Yön |
+| `neon` | 0x03 | Hız |
+| `sparkle` | 0x04 | Hız |
+| `reactive` | 0x07 | Renk + Hız |
+| `ripple` | 0x0A | Renk + Hız |
+
+### Tuş İndeksleri (Doğrulanmış)
+
+| Tuş | Fiziksel İndeks |
+|-----|----------------|
+| LCtrl | 110 |
+| RCtrl | 121 |
+| Menu | 120 |
+| Fn | 122 |
+
+### Cihaz Bilgileri
+
+| Özellik | Değer |
+|---------|-------|
+| VID | 0x2E3C |
+| PID | 0xC365 |
+| Interface | 2 |
+| Usage Page | 0xFF1B |
+| Usage | 0x91 |
+| Report ID | 0x01 |
+| Paket Boyutu | 64 byte |
+
+### C++ Kullanımı
+
+```cpp
+#include "wraith/WraithW60.h"
+
+auto device = wraith::WraithW60::openDevice();
+
+// Kırmızı backlight
+device->setBacklight(wraith::LightingMode::Static, 255, 0, 0);
+
+// Mavi underglow
+device->setUnderglow(wraith::LightingMode::Breathe, 0, 0, 255);
+
+// LCtrl mavi
+device->setKeyColor(110, 0, 0, 255);
 
 // Tüm tuşları beyaz yap
-std::vector<Color> white(126, Color(255, 255, 255));
-keyboard->setAllKeys(white);
+std::vector<wraith::Color> colors(126, wraith::Color(255, 255, 255));
+device->setAllKeys(colors);
 
-// Değişiklikleri uygula
-keyboard->apply();
+device->apply();
 ```
 
-## Aydınlatma Modları
-
-| Mod | Değer | Açıklama |
-|-----|-------|----------|
-| `static` | 0x00 | Sabit renk |
-| `breathe` | 0x01 | Nefes alma |
-| `wave` | 0x02 | Dalga |
-| `neon` | 0x03 | Neon |
-| `sparkle` | 0x04 | Kıvılcım |
-| `reactive` | 0x07 | Tepkili |
-| `ripple` | 0x0A | Dalga efekti |
-| `mod6` | 0x06 | Mod 6 |
-| `mod8` | 0x08 | Mod 8 |
-| `mod9` | 0x09 | Mod 9 |
-| `mod11` | 0x0B | Mod 11 |
-| `mod12` | 0x0C | Mod 12 |
-| `mod14` | 0x0E | Mod 14 |
-| `mod15` | 0x0F | Mod 15 |
-| `mod16` | 0x10 | Mod 16 |
-
-## OpenRGB Entegrasyonu
-
-OpenRGB eklentisi, klavyenizi OpenRGB yazılımıyla kontrol etmenizi sağlar.
+### Kaynaktan Derleme
 
 ```bash
-# OpenRGB ile derleme
-cmake .. -DWRAITH_BUILD_OPENRGB=ON
-cmake --build .
+# Bağımlılıkları kurun (Linux)
+sudo apt-get install cmake g++ libhidapi-dev
+
+# Derleyin
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+
+# Windows (MSYS2 UCRT64)
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
-Derlenen eklenti `.dll`/`.so` dosyasını OpenRGB eklenti klasörüne kopyalayın.
+### OpenRGB Entegrasyonu
 
-## Testler
+Ayrıntılı talimatlar için [docs/OPENRGB.md](docs/OPENRGB.md) dosyasına bakın.
 
-```bash
-cmake .. -DWRAITH_BUILD_TESTS=ON
-cmake --build .
-ctest
-```
+### Lisans
 
-## Proje Yapısı
-
-```
-WraithW60Library/
-├── CMakeLists.txt
-├── README.md
-├── .gitignore
-├── include/wraith/           # Başlık dosyaları
-│   ├── WraithW60.h          # Ana kütüphane
-│   ├── WraithW60Device.h    # Cihaz yönetimi
-│   ├── WraithW60Leds.h      # LED ve tuş tanımları
-│   ├── WraithW60Modes.h     # Aydınlatma modları
-│   ├── WraithW60Protocol.h  # USB protokolü
-│   ├── WraithW60Types.h     # Tip tanımları
-│   └── WraithW60Error.h     # Hata yönetimi
-├── src/
-│   ├── core/                 # Kütüphane çekirdeği
-│   ├── cli/                  # Komut satırı aracı
-│   ├── openrgb/             # OpenRGB eklentisi
-│   └── platform/            # Platform bağımlı kod
-└── tests/                   # Test dosyaları
-```
-
-## Lisans
-
-MIT License
+GPL-2.0-or-later

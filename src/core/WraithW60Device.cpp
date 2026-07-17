@@ -1,4 +1,4 @@
-﻿#include "wraith/WraithW60.h"
+#include "wraith/WraithW60.h"
 #include "wraith/WraithW60Protocol.h"
 #include "wraith/WraithW60Device.h"
 #include "wraith/WraithW60Modes.h"
@@ -162,14 +162,15 @@ WraithW60Error WraithW60::setKeyColor(uint8_t keyIndex, uint8_t r, uint8_t g, ui
 
     pImpl->m_state.perKeyColors[keyIndex] = Color(r, g, b);
 
+    // Send only the changed chunk (preserves other keys' colors)
     uint8_t chunkIndex = keyIndex / static_cast<uint8_t>(protocol::PER_KEY_FULL_CHUNK_KEYS);
+    bool isLast = (chunkIndex == protocol::PER_KEY_TOTAL_CHUNKS - 1);
+    uint8_t keyCount = isLast ? 6 : static_cast<uint8_t>(protocol::PER_KEY_FULL_CHUNK_KEYS);
     uint8_t startKey = chunkIndex * static_cast<uint8_t>(protocol::PER_KEY_FULL_CHUNK_KEYS);
-    uint8_t endKey = startKey + static_cast<uint8_t>(protocol::PER_KEY_FULL_CHUNK_KEYS);
-    if (endKey > protocol::PER_KEY_TOTAL_KEYS) endKey = static_cast<uint8_t>(protocol::PER_KEY_TOTAL_KEYS);
 
     std::vector<Color> chunkColors(
         pImpl->m_state.perKeyColors.begin() + startKey,
-        pImpl->m_state.perKeyColors.begin() + endKey
+        pImpl->m_state.perKeyColors.begin() + startKey + keyCount
     );
     return pImpl->sendPerKeyChunk(chunkIndex, chunkColors);
 }

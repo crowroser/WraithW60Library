@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -22,7 +22,8 @@ struct Color {
 };
 
 struct KeyDefinition {
-    uint8_t index;
+    uint8_t index;          // Logical index (0-78)
+    uint8_t physicalIndex;  // Physical LED index (0-125)
     const char* name;
     const char* label;
     uint8_t row;

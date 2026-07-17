@@ -1,0 +1,102 @@
+﻿name: Build & Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-hidapi
+
+      - name: Build
+        shell: msys2 {0}
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+
+      - name: Create portable package
+        shell: msys2 {0}
+        run: |
+          mkdir -p dist
+          cp build/src/cli/wraith_cli.exe dist/wraith.exe
+          cp build/src/core/libwraith.dll dist/
+          cp /ucrt64/bin/libgcc_s_seh-1.dll dist/
+          cp /ucrt64/bin/libstdc++-6.dll dist/
+          cp /ucrt64/bin/libhidapi-0.dll dist/
+          cp /ucrt64/bin/libwinpthread-1.dll dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wraith-w60-windows-x64
+          path: dist/
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ libhidapi-dev pkg-config
+
+      - name: Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j$(nproc)
+
+      - name: Create package
+        run: |
+          mkdir -p dist
+          cp build/src/cli/wraith_cli dist/wraith
+          cp build/src/core/libwraith.so* dist/ 2>/dev/null || true
+          chmod +x dist/wraith
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wraith-w60-linux-x64
+          path: dist/
+
+  release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - name: Zip Windows build
+        run: |
+          cd wraith-w60-windows-x64
+          zip -r ../wraith-w60-windows-x64.zip .
+          cd ..
+
+      - name: Tar Linux build
+        run: |
+          tar -czf wraith-w60-linux-x64.tar.gz -C wraith-w60-linux-x64 .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            wraith-w60-windows-x64.zip
+            wraith-w60-linux-x64.tar.gz
+          generate_release_notes: true
+          draft: false
+          prerelease: false
