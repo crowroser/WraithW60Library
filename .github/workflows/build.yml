@@ -54,19 +54,22 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake g++ pkg-config libudev-dev \
-            autoconf automake libtool
+            autoconf automake libtool git
 
-      - name: Install hidapi from source
+      - name: Install hidapi
         run: |
-          cd /tmp
-          git clone https://github.com/libusb/hidapi.git
-          cd hidapi
-          ls -la
-          ./autogen.sh
-          ./configure --prefix=/usr
-          make -j$(nproc)
-          sudo make install
-          sudo ldconfig
+          if apt-cache show libhidapi-dev >/dev/null 2>&1; then
+            sudo apt-get install -y libhidapi-dev
+          else
+            cd /tmp
+            git clone https://github.com/libusb/hidapi.git
+            cd hidapi
+            ./autogen.sh
+            ./configure --prefix=/usr
+            make -j$(nproc)
+            sudo make install
+            sudo ldconfig
+          fi
 
       - name: Build
         run: |
