@@ -132,7 +132,7 @@ OpenRGB profillerini kullanarak farklý renk düzenlerini kaydedebilirsiniz:
 
 ## Key Mapping (Physical LED Indices)
 
-The Wraith W60 uses physical LED indices (0-125) for per-key control. The mapping below was discovered via hardware testing.
+The Wraith W60 uses physical LED indices (0-125) for per-key control. Verified via hardware testing.
 
 ### Number Row (Row 0)
 | Key | Index | Key | Index |
@@ -140,8 +140,8 @@ The Wraith W60 uses physical LED indices (0-125) for per-key control. The mappin
 | Esc | 22 | 8 | 30 |
 | 1 | 23 | 9 | 31 |
 | 2 | 24 | 0 | 32 |
-| 3 | 25 | = | 33 |
-| 4 | 26 | - | 34 |
+| 3 | 25 | - (_) | 33 |
+| 4 | 26 | = (+) | 34 |
 | 5 | 27 | Bksp | 36 |
 | 6 | 28 | | |
 | 7 | 29 | | |
@@ -150,11 +150,11 @@ The Wraith W60 uses physical LED indices (0-125) for per-key control. The mappin
 | Key | Index | Key | Index |
 |-----|-------|-----|-------|
 | Tab | 44 | U | 51 |
-| Q | 45 | ý | 52 |
+| Q | 45 | I (ý) | 52 |
 | W | 46 | O | 53 |
 | E | 47 | P | 54 |
-| R | 48 | ð | 55 |
-| T | 49 | | |
+| R | 48 | Ð ([{) | 55 |
+| T | 49 | Ü (]}) | 56 |
 | Y | 50 | | |
 
 ### Home Row (Row 2)
@@ -162,8 +162,8 @@ The Wraith W60 uses physical LED indices (0-125) for per-key control. The mappin
 |-----|-------|-----|-------|
 | Caps | 66 | K | 75 |
 | A | 68 | L | 76 |
-| S | 69 | Þ | 77 |
-| D | 70 | Ý | 78 |
+| S | 69 | Þ (;:) | 77 |
+| D | 70 | Ý (') | 78 |
 | F | 71 | Enter | 80 |
 | G | 72 | | |
 | H | 73 | | |
@@ -172,9 +172,9 @@ The Wraith W60 uses physical LED indices (0-125) for per-key control. The mappin
 ### Shift Row (Row 3)
 | Key | Index | Key | Index |
 |-----|-------|-----|-------|
-| LShift | 88 | Ö | 97 |
-| Z | 90 | Ç | 98 |
-| X | 91 | . | 99 |
+| LShift | 88 | Ö (,<) | 97 |
+| Z | 90 | Ç (.>) | 98 |
+| X | 91 | / (?) | 99 |
 | C | 92 | RShift | 100 |
 | V | 93 | | |
 | B | 94 | | |
@@ -184,9 +184,9 @@ The Wraith W60 uses physical LED indices (0-125) for per-key control. The mappin
 ### Bottom Row (Row 4)
 | Key | Index | Key | Index |
 |-----|-------|-----|-------|
-| LCtrl | 110 | Alt | 119 |
+| LCtrl | 110 | RAlt | 119 |
 | Win | 111 | Menu | 120 |
-| Alt | 112 | RCtrl | 121 |
+| LAlt | 112 | RCtrl | 121 |
 | Space | 116 | Fn | 122 |
 
 ## Sorun Giderme
