@@ -66,11 +66,6 @@ jobs:
           make -j$(nproc)
           sudo make install
           sudo ldconfig
-          # Verify installation
-          echo "=== Checking hidapi installation ==="
-          ls -la /usr/lib/libhidapi* || true
-          ls -la /usr/include/hidapi.h || true
-          pkg-config --cflags --libs hidapi || echo "pkg-config not found, will use find_library"
 
       - name: Build
         run: |
@@ -97,11 +92,21 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/download-artifact@v4
 
-      - name: Get version
+      - name: Get version from commit
         id: version
-        run: echo "VERSION=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          TIMESTAMP=$(date +'%Y%m%d')
+          VERSION="v1.0.${GITHUB_RUN_NUMBER}-${TIMESTAMP}-${SHORT_SHA}"
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "BUILD_DATE=$(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
+          echo "SHORT_SHA=${SHORT_SHA}" >> $GITHUB_OUTPUT
 
       - name: Zip Windows build
         run: |
@@ -116,11 +121,34 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.VERSION }}
-          name: Build ${{ steps.version.outputs.VERSION }}
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: "Wraith W60 Library ${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## Wraith W60 RGB Controller
+
+            **Build Date:** ${{ steps.version.outputs.BUILD_DATE }}
+            **Commit:** ${{ steps.version.outputs.SHORT_SHA }}
+
+            ### Downloads
+            - `wraith-w60-windows-x64.zip` — Windows (portable)
+            - `wraith-w60-linux-x64.tar.gz` — Linux (portable)
+
+            ### Included
+            - `wraith.exe` / `wraith` — CLI tool
+            - `WraithW60.js` — Signal RGB plugin
+
+            ### Quick Start
+            ```cmd
+            wraith.exe backlight static 255 0 0
+            ```
+
+            ### Signal RGB Plugin
+            Copy `WraithW60.js` to:
+            ```
+            %USERPROFILE%\Documents\WhirlwindFX\Plugins\
+            ```
           files: |
             wraith-w60-windows-x64.zip
             wraith-w60-linux-x64.tar.gz
-          generate_release_notes: true
           draft: false
           prerelease: false
