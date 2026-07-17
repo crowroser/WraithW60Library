@@ -9,22 +9,49 @@ option(WRAITH_BUILD_CLI "Build CLI tool" ON)
 option(WRAITH_BUILD_OPENRGB "Build OpenRGB integration" OFF)
 option(WRAITH_BUILD_TESTS "Build tests" OFF)
 
+# Try pkg-config first
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
-    pkg_check_modules(HIDAPI QUIET hidapi)
+    pkg_check_modules(HIDAPI QUIET hidapi hidapi-hidraw)
 endif()
 
+# Fallback: find library and header manually
 if(NOT HIDAPI_FOUND)
-    find_library(HIDAPI_LIBRARY hidapi)
-    find_path(HIDAPI_INCLUDE_DIR hidapi.h PATH_SUFFIXES hidapi)
+    find_library(HIDAPI_LIBRARY NAMES hidapi hidapi-hidraw hidapi-libusb
+        HINTS /usr/lib /usr/lib64 /usr/local/lib /usr/lib/x86_64-linux-gnu)
+    find_path(HIDAPI_INCLUDE_DIR NAMES hidapi.h
+        HINTS /usr/include /usr/local/include /usr/include/hidapi
+        PATH_SUFFIXES hidapi)
     if(HIDAPI_LIBRARY AND HIDAPI_INCLUDE_DIR)
         set(HIDAPI_LIBRARIES ${HIDAPI_LIBRARY})
         set(HIDAPI_INCLUDE_DIRS ${HIDAPI_INCLUDE_DIR})
         set(HIDAPI_FOUND TRUE)
-    else()
-        message(FATAL_ERROR "hidapi not found. Install libhidapi-dev (Linux) or use vcpkg (Windows).")
     endif()
 endif()
+
+# Last resort: try to find just the library (header might be in system include)
+if(NOT HIDAPI_FOUND)
+    find_library(HIDAPI_LIBRARY NAMES hidapi)
+    if(HIDAPI_LIBRARY)
+        set(HIDAPI_LIBRARIES ${HIDAPI_LIBRARY})
+        set(HIDAPI_INCLUDE_DIRS /usr/include)
+        set(HIDAPI_FOUND TRUE)
+    endif()
+endif()
+
+if(NOT HIDAPI_FOUND)
+    message(FATAL_ERROR "hidapi not found!\n"
+        "Install:\n"
+        "  Ubuntu/Debian: sudo apt install libhidapi-dev\n"
+        "  Fedora:        sudo dnf install hidapi-devel\n"
+        "  Arch:          sudo pacman -S hidapi\n"
+        "  Windows:       vcpkg install hidapi\n"
+        "  macOS:         brew install hidapi\n"
+        "  Or build from source: https://github.com/libusb/hidapi")
+endif()
+
+message(STATUS "Found hidapi: ${HIDAPI_LIBRARIES}")
+message(STATUS "hidapi includes: ${HIDAPI_INCLUDE_DIRS}")
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include

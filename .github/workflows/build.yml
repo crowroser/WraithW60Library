@@ -54,7 +54,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake g++ pkg-config make git \
-            libudev-dev libusb-1.0-0-dev
+            libudev-dev libusb-1.0-0-dev autoconf automake libtool
 
       - name: Install hidapi from source
         run: |
@@ -66,10 +66,15 @@ jobs:
           make -j$(nproc)
           sudo make install
           sudo ldconfig
+          # Verify installation
+          echo "=== Checking hidapi installation ==="
+          ls -la /usr/lib/libhidapi* || true
+          ls -la /usr/include/hidapi.h || true
+          pkg-config --cflags --libs hidapi || echo "pkg-config not found, will use find_library"
 
       - name: Build
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/usr
           cmake --build build -j$(nproc)
 
       - name: Create package
