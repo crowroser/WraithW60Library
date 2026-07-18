@@ -1,10 +1,11 @@
+import { systeminfo } from "@SignalRGB/systeminfo";
+
 // Wraith W60 RGB Keyboard Plugin for Signal RGB
 // VID: 0x2E3C, PID: 0xC365, Interface: 2, Usage Page: 0xFF1B
-// Uses device.write() (Output report / interrupt OUT) Ã¢â‚¬â€ NOT device.send_report()
+// Uses device.write() (Output report / interrupt OUT)
 //
-// FIX: device.color(x,y) bir [r,g,b] ARRAY dÃƒÂ¶ndÃƒÂ¼rÃƒÂ¼yor, packed integer DEÃ„ÂÃ„Â°L.
-// Eski kod bit kaydÃ„Â±rma (>>16 vs) yapÃ„Â±yordu, bu array ÃƒÂ¼zerinde NaN'a dÃƒÂ¼Ã…Å¸ÃƒÂ¼p
-// her zaman (0,0,0) siyah ÃƒÂ¼retiyordu. ArtÃ„Â±k colorToRGB() ile doÃ„Å¸ru okunuyor.
+// Underglow: ayri kanal olarak gosterilir (anakart fan header'i gibi)
+// RAM Usage modu ile otomatik renk degisimi desteklenir
 
 function dlog(msg) {
     try {
@@ -18,11 +19,6 @@ function dlog(msg) {
     } catch (e) {}
 }
 
-// device.color() farklÃ„Â± SignalRGB sÃƒÂ¼rÃƒÂ¼mlerinde farklÃ„Â± formatlar dÃƒÂ¶ndÃƒÂ¼rebiliyor:
-// - [r,g,b] array (bizim durumumuzda bu)
-// - {r,g,b} nesnesi
-// - 0xRRGGBB packed integer
-// Bu fonksiyon hepsini normalize ediyor.
 function colorToRGB(c) {
     if (Array.isArray(c)) {
         return [c[0] | 0, c[1] | 0, c[2] | 0];
@@ -44,7 +40,9 @@ export function ProductId()   { return 0xC365; }
 export function Type()        { return "hid"; }
 export function DeviceType()  { return "keyboard"; }
 
-export function Size()        { return [600, 240]; }
+export function Size()        { return [30, 11]; }
+export function DefaultPosition(){return [0, 0];}
+export function DefaultScale(){return 10.0;}
 
 export function LedNames() {
     return [
@@ -57,7 +55,7 @@ export function LedNames() {
 }
 
 export function LedPositions() {
-    var u = 40;
+    var u = 2;
     var p = [];
     var x;
 
@@ -117,7 +115,9 @@ export function Validate(endpoint) {
 export function ControllableParameters() {
     return [
         { "property": "LightingZone", "label": "Lighting Zone", "type": "combobox",
-          "values": ["Per-Key", "Backlight", "Underglow", "Power Bar"], "default": "Per-Key" }
+          "values": ["Per-Key", "Backlight"], "default": "Per-Key" },
+        { "property": "UnderglowMode", "label": "Underglow Mode", "type": "combobox",
+          "values": ["Channel", "RAM Usage"], "default": "RAM Usage" }
     ];
 }
 
@@ -134,18 +134,59 @@ function getLightingZone() {
                 }
             }
         }
-    } catch (e) {
-        dlog("getLightingZone(): threw: " + e);
-    }
+    } catch (e) {}
     if (typeof LightingZone !== "undefined" && LightingZone) {
         return LightingZone;
     }
     return "Per-Key";
 }
 
+function getUnderglowMode() {
+    if (typeof UnderglowMode !== "undefined" && UnderglowMode) {
+        return UnderglowMode;
+    }
+    return "RAM Usage";
+}
+
+// RAM kullanim yuzdesine gore renk: Yesil(0%) -> Sari(50%) -> Kirmizi(100%)
+function getRamColor() {
+    try {
+        var ramPercent = 50;
+        if (typeof systeminfo !== "undefined" && systeminfo !== null) {
+            if (typeof systeminfo.getMemoryUsage === "function") {
+                ramPercent = systeminfo.getMemoryUsage();
+            } else if (typeof systeminfo.memoryUsage === "number") {
+                ramPercent = systeminfo.memoryUsage;
+            } else if (typeof systeminfo.getRamUsage === "function") {
+                ramPercent = systeminfo.getRamUsage();
+            } else if (typeof systeminfo.getMemory === "function") {
+                var mem = systeminfo.getMemory();
+                if (mem && typeof mem.percentUsed === "number") {
+                    ramPercent = mem.percentUsed;
+                }
+            }
+        }
+        ramPercent = Math.max(0, Math.min(100, ramPercent));
+
+        var r, g;
+        if (ramPercent < 50) {
+            r = Math.round((ramPercent / 50) * 255);
+            g = 255;
+        } else {
+            r = 255;
+            g = Math.round(((100 - ramPercent) / 50) * 255);
+        }
+        return [r, g, 0];
+    } catch (e) {
+        return [0, 255, 0];
+    }
+}
+
 var renderCallCount = 0;
 
 export function Initialize() {
+    device.SetLedLimit(233);
+    device.addChannel("Underglow", 1);
     sendTestPacket();
 }
 
@@ -173,19 +214,19 @@ export function Render() {
     var zone = getLightingZone();
 
     if (renderCallCount <= 5 || renderCallCount % 120 === 0) {
-        dlog("Render() #" + renderCallCount + " zone=" + zone);
+        dlog("Render() #" + renderCallCount + " zone=" + zone + " underglowMode=" + getUnderglowMode());
     }
 
-    if (zone === "Backlight") {
-        sendBacklight();
-    } else if (zone === "Underglow") {
-        sendUnderglow();
-    } else if (zone === "Power Bar") {
-        sendPowerBar();
-    } else {
-        sendPerKeyColors();
-    }
+    sendPerKeyColors();
     device.pause(1);
+
+    sendUnderglow();
+    device.pause(1);
+
+    if (zone === "Backlight" && renderCallCount % 30 === 0) {
+        sendBacklight();
+        device.pause(1);
+    }
 }
 
 export function Shutdown(s) {
@@ -275,6 +316,7 @@ function sendBacklight() {
     device.write(pkt, 65);
 }
 
+// Underglow: ayri kanaldan renk okur veya RAM Usage modu kullanir
 function sendUnderglow() {
     var pkt = [];
     pkt[0] = 0x01;
@@ -286,37 +328,49 @@ function sendUnderglow() {
     pkt[6] = 0x00;
     pkt[7] = 0x04;
     pkt[8] = 0x03;
-    var rgb = colorToRGB(device.color(300, 120));
-    pkt[9]  = rgb[1]; // Green (GRB order)
-    pkt[10] = rgb[0]; // Red
-    pkt[11] = rgb[2]; // Blue
+
+    var rgb;
+    if (getUnderglowMode() === "RAM Usage") {
+        rgb = getRamColor();
+    } else {
+        // Kanaldan renk oku (component atanmissa)
+        var ch = device.channel("Underglow");
+        if (ch && ch.LedCount() > 0) {
+            var colorData = ch.getColors("Inline", "RGB");
+            if (colorData && colorData.length >= 3) {
+                rgb = [colorData[0], colorData[1], colorData[2]];
+            } else {
+                rgb = [0, 0, 0];
+            }
+        } else {
+            // Kanalda component yoksa canvas'tan oku
+            rgb = [0, 255, 0];
+        }
+    }
+
+    pkt[9]  = rgb[0];
+    pkt[10] = rgb[1];
+    pkt[11] = rgb[2];
     for (var i = 12; i < 65; i++) pkt.push(0);
     device.write(pkt, 65);
 }
 
-// Power Bar: CMD_UNDERGLOW (0x08) + ZONE_TYPE_UNDERGLOW (0x03)
-// 2 LED regions in GRB order (verified via USB capture).
-// Left region (byte 9-11) + Right region (byte 12-14).
 function sendPowerBar() {
     var pkt = [];
-    pkt[0] = 0x01; // Report ID
-    pkt[1] = 0x08; // CMD_UNDERGLOW
+    pkt[0] = 0x01;
+    pkt[1] = 0x08;
     pkt[2] = 0x00;
     pkt[3] = 0x00;
     pkt[4] = 0x00;
-    pkt[5] = 0x0E; // Length
-    pkt[6] = 0x00; // Mode
+    pkt[5] = 0x0E;
+    pkt[6] = 0x00;
     pkt[7] = 0x04;
-    pkt[8] = 0x03; // ZONE_TYPE_UNDERGLOW
-
-    // Sample color from center of layout
-    var rgb = colorToRGB(device.color(300, 120));
-
-    pkt[9]  = rgb[0]; // Red
-    pkt[10] = rgb[1]; // Green
-    pkt[11] = rgb[2]; // Blue
-    pkt[12] = 0x80;   // Speed
-
+    pkt[8] = 0x03;
+    var rgb = [0, 0, 255];
+    pkt[9]  = rgb[0];
+    pkt[10] = rgb[1];
+    pkt[11] = rgb[2];
+    pkt[12] = 0x80;
     for (var i = 13; i < 65; i++) pkt.push(0);
     device.write(pkt, 65);
 }
