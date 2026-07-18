@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cstdint>
 #include <cstddef>
@@ -22,6 +22,8 @@ constexpr uint8_t CMD_BACKLIGHT = 0x07;
 constexpr uint8_t CMD_UNDERGLOW = 0x08;
 constexpr uint8_t CMD_PER_KEY_RGB = 0x09;
 constexpr uint8_t CMD_APPLY = 0x17;
+constexpr uint8_t CMD_RAPID_TRIGGER = 0x21;
+constexpr uint8_t CMD_SOCD = 0x24;
 
 constexpr size_t OFFSET_REPORT_ID = 0;
 constexpr size_t OFFSET_COMMAND = 1;
@@ -40,6 +42,23 @@ constexpr uint8_t ZONE_TYPE_BACKLIGHT = 0x04;
 constexpr uint8_t ZONE_TYPE_UNDERGLOW = 0x03;
 constexpr uint8_t BACKLIGHT_LENGTH = 0x0E;
 
+// SOCD packet offsets (CMD 0x24)
+constexpr size_t SOCD_OFFSET_SUBCMD = 2;
+constexpr size_t SOCD_OFFSET_LENGTH = 5;
+constexpr size_t SOCD_OFFSET_STATUS = 6;
+
+// Rapid Trigger packet offsets (CMD 0x21)
+// Captured: 01 21 00 00 00 18 0C 00 04 ... 55 55 19 19 ...
+constexpr size_t RT_OFFSET_SUBCMD = 2;       // always 0x00
+constexpr size_t RT_OFFSET_ADDR_HIGH = 5;   // 0x18
+constexpr size_t RT_OFFSET_ADDR_LOW = 6;    // 0x0C or 0x00
+constexpr size_t RT_OFFSET_PARAM = 7;       // 0x00 or 0x04
+constexpr size_t RT_OFFSET_PROFILE = 8;     // 0x04
+constexpr size_t RT_OFFSET_UP_THRESHOLD = 29;   // release threshold (e.g. 0x55 = 85)
+constexpr size_t RT_OFFSET_UP_THRESHOLD_2 = 30; // duplicate
+constexpr size_t RT_OFFSET_DOWN_THRESHOLD = 31; // press threshold (e.g. 0x19 = 25)
+constexpr size_t RT_OFFSET_DOWN_THRESHOLD_2 = 32; // duplicate
+
 constexpr size_t PER_KEY_OFFSET_SUBCMD = 2;
 constexpr size_t PER_KEY_OFFSET_CHUNK = 4;
 constexpr size_t PER_KEY_OFFSET_DATA_LEN = 5;
@@ -52,8 +71,11 @@ constexpr uint8_t PER_KEY_PARTIAL_LENGTH = 0x12;
 
 void buildBacklightPacket(uint8_t* packet, uint8_t mode, uint8_t r, uint8_t g, uint8_t b, uint8_t speed);
 void buildUnderglowPacket(uint8_t* packet, uint8_t mode, uint8_t r, uint8_t g, uint8_t b, uint8_t speed);
+void buildPowerBarPacket(uint8_t* packet, uint8_t r, uint8_t g, uint8_t b);
 void buildPerKeyPacket(uint8_t* packet, uint8_t chunkIndex, const uint8_t* rgbData, size_t keyCount);
 void buildApplyPacket(uint8_t* packet);
+void buildSocdPacket(uint8_t* packet, bool enable);
+void buildRapidTriggerPacket(uint8_t* packet, uint8_t upThreshold, uint8_t downThreshold);
 
 } // namespace protocol
 } // namespace wraith

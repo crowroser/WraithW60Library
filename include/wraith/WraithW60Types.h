@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -16,6 +16,13 @@ struct DeviceState {
     LightingMode underglowMode = LightingMode::Static;
     Color underglowColor;
     uint8_t underglowSpeed = 0x80;
+
+    Color powerBarColor;
+
+    bool socdEnabled = false;
+
+    uint8_t rtUpThreshold = 0x55;
+    uint8_t rtDownThreshold = 0x19;
 
     std::vector<Color> perKeyColors;
 };

@@ -117,7 +117,7 @@ export function Validate(endpoint) {
 export function ControllableParameters() {
     return [
         { "property": "LightingZone", "label": "Lighting Zone", "type": "combobox",
-          "values": ["Per-Key", "Backlight", "Underglow"], "default": "Per-Key" }
+          "values": ["Per-Key", "Backlight", "Underglow", "Power Bar"], "default": "Per-Key" }
     ];
 }
 
@@ -180,6 +180,8 @@ export function Render() {
         sendBacklight();
     } else if (zone === "Underglow") {
         sendUnderglow();
+    } else if (zone === "Power Bar") {
+        sendPowerBar();
     } else {
         sendPerKeyColors();
     }
@@ -285,10 +287,37 @@ function sendUnderglow() {
     pkt[7] = 0x04;
     pkt[8] = 0x03;
     var rgb = colorToRGB(device.color(300, 120));
-    pkt[9]  = rgb[0];
-    pkt[10] = rgb[1];
-    pkt[11] = rgb[2];
+    pkt[9]  = rgb[1]; // Green (GRB order)
+    pkt[10] = rgb[0]; // Red
+    pkt[11] = rgb[2]; // Blue
     for (var i = 12; i < 65; i++) pkt.push(0);
+    device.write(pkt, 65);
+}
+
+// Power Bar: CMD_UNDERGLOW (0x08) + ZONE_TYPE_UNDERGLOW (0x03)
+// 2 LED regions in GRB order (verified via USB capture).
+// Left region (byte 9-11) + Right region (byte 12-14).
+function sendPowerBar() {
+    var pkt = [];
+    pkt[0] = 0x01; // Report ID
+    pkt[1] = 0x08; // CMD_UNDERGLOW
+    pkt[2] = 0x00;
+    pkt[3] = 0x00;
+    pkt[4] = 0x00;
+    pkt[5] = 0x0E; // Length
+    pkt[6] = 0x00; // Mode
+    pkt[7] = 0x04;
+    pkt[8] = 0x03; // ZONE_TYPE_UNDERGLOW
+
+    // Sample color from center of layout
+    var rgb = colorToRGB(device.color(300, 120));
+
+    pkt[9]  = rgb[0]; // Red
+    pkt[10] = rgb[1]; // Green
+    pkt[11] = rgb[2]; // Blue
+    pkt[12] = 0x80;   // Speed
+
+    for (var i = 13; i < 65; i++) pkt.push(0);
     device.write(pkt, 65);
 }
 

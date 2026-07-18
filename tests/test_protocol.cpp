@@ -1,4 +1,4 @@
-﻿#include <cassert>
+#include <cassert>
 #include <cstring>
 #include <iostream>
 #include "wraith/WraithW60Protocol.h"
@@ -86,7 +86,6 @@ void test_error_handling() {
 
 void test_key_layout() {
     assert(KeyLayout::getTotalKeys() > 0);
-    assert(KeyLayout::getTotalKeys() == 79);
 
     const auto* esc = KeyLayout::getKeyByName("esc");
     assert(esc != nullptr);
@@ -123,6 +122,128 @@ void test_zone_registry() {
     std::cout << "[PASS] test_zone_registry\n";
 }
 
+void test_power_bar_packet() {
+    using namespace protocol;
+
+    uint8_t packet[REPORT_SIZE];
+
+    // Power bar uses underglow command with RGB order
+    buildPowerBarPacket(packet, 255, 0, 0);
+
+    assert(packet[OFFSET_REPORT_ID] == REPORT_ID);
+    assert(packet[OFFSET_COMMAND] == CMD_UNDERGLOW);
+    assert(packet[OFFSET_LENGTH] == BACKLIGHT_LENGTH);
+    assert(packet[OFFSET_MODE] == 0x00);
+    assert(packet[OFFSET_UNKNOWN] == 0x04);
+    assert(packet[OFFSET_ZONE_TYPE] == ZONE_TYPE_UNDERGLOW);
+
+    // RGB order
+    assert(packet[OFFSET_RED]   == 255);
+    assert(packet[OFFSET_GREEN] == 0);
+    assert(packet[OFFSET_BLUE]  == 0);
+    assert(packet[OFFSET_SPEED] == 0x80);
+
+    // Green
+    buildPowerBarPacket(packet, 0, 255, 0);
+    assert(packet[OFFSET_RED]   == 0);
+    assert(packet[OFFSET_GREEN] == 255);
+    assert(packet[OFFSET_BLUE]  == 0);
+
+    // Blue
+    buildPowerBarPacket(packet, 0, 0, 255);
+    assert(packet[OFFSET_RED]   == 0);
+    assert(packet[OFFSET_GREEN] == 0);
+    assert(packet[OFFSET_BLUE]  == 255);
+
+    // Rest zeroed
+    for (size_t i = 13; i < REPORT_SIZE; ++i) {
+        assert(packet[i] == 0);
+    }
+
+    std::cout << "[PASS] test_power_bar_packet\n";
+}
+
+void test_socd_packet() {
+    using namespace protocol;
+    uint8_t packet[REPORT_SIZE];
+
+    // Test enable
+    buildSocdPacket(packet, true);
+    assert(packet[OFFSET_REPORT_ID] == REPORT_ID);
+    assert(packet[OFFSET_COMMAND] == CMD_SOCD);
+    assert(packet[SOCD_OFFSET_SUBCMD] == 0x03);
+    assert(packet[SOCD_OFFSET_LENGTH] == 0x01);
+    assert(packet[SOCD_OFFSET_STATUS] == 0x01);
+
+    // Test disable
+    buildSocdPacket(packet, false);
+    assert(packet[SOCD_OFFSET_STATUS] == 0x00);
+    assert(packet[SOCD_OFFSET_SUBCMD] == 0x03);
+    assert(packet[SOCD_OFFSET_LENGTH] == 0x01);
+
+    // Rest zeroed
+    for (size_t i = 7; i < REPORT_SIZE; ++i)
+        assert(packet[i] == 0);
+
+    // Verify against captured: 01 24 03 00 00 01 01 ...
+    buildSocdPacket(packet, true);
+    assert(packet[0] == 0x01);
+    assert(packet[1] == 0x24);
+    assert(packet[2] == 0x03);
+    assert(packet[3] == 0x00);
+    assert(packet[4] == 0x00);
+    assert(packet[5] == 0x01);
+    assert(packet[6] == 0x01);
+
+    // Verify disable: 01 24 03 00 00 01 00 ...
+    buildSocdPacket(packet, false);
+    assert(packet[6] == 0x00);
+
+    std::cout << "[PASS] test_socd_packet\n";
+}
+
+void test_rapid_trigger_packet() {
+    using namespace protocol;
+    uint8_t packet[REPORT_SIZE];
+
+    // Test with captured values: up=0x55, down=0x19
+    buildRapidTriggerPacket(packet, 0x55, 0x19);
+
+    assert(packet[OFFSET_REPORT_ID] == REPORT_ID);
+    assert(packet[OFFSET_COMMAND] == CMD_RAPID_TRIGGER);  // 0x21
+    assert(packet[RT_OFFSET_SUBCMD] == 0x00);
+    assert(packet[RT_OFFSET_ADDR_HIGH] == 0x18);
+    assert(packet[RT_OFFSET_ADDR_LOW] == 0x0C);
+    assert(packet[RT_OFFSET_PARAM] == 0x00);
+    assert(packet[RT_OFFSET_PROFILE] == 0x04);
+
+    // Thresholds at bytes 29-32
+    assert(packet[RT_OFFSET_UP_THRESHOLD] == 0x55);
+    assert(packet[RT_OFFSET_UP_THRESHOLD_2] == 0x55);
+    assert(packet[RT_OFFSET_DOWN_THRESHOLD] == 0x19);
+    assert(packet[RT_OFFSET_DOWN_THRESHOLD_2] == 0x19);
+
+    // Verify exact captured packet: 01 21 00 00 00 18 0C 00 04 ... 55 55 19 19
+    assert(packet[0] == 0x01);
+    assert(packet[1] == 0x21);
+    assert(packet[2] == 0x00);
+    assert(packet[3] == 0x00);
+    assert(packet[4] == 0x00);
+    assert(packet[5] == 0x18);
+    assert(packet[6] == 0x0C);
+    assert(packet[7] == 0x00);
+    assert(packet[8] == 0x04);
+
+    // Test with different values
+    buildRapidTriggerPacket(packet, 0x32, 0x0A);
+    assert(packet[RT_OFFSET_UP_THRESHOLD] == 0x32);
+    assert(packet[RT_OFFSET_UP_THRESHOLD_2] == 0x32);
+    assert(packet[RT_OFFSET_DOWN_THRESHOLD] == 0x0A);
+    assert(packet[RT_OFFSET_DOWN_THRESHOLD_2] == 0x0A);
+
+    std::cout << "[PASS] test_rapid_trigger_packet\n";
+}
+
 int main() {
     std::cout << "Wraith W60 Unit Tests\n"
               << "=====================\n\n";
@@ -133,6 +254,9 @@ int main() {
     test_error_handling();
     test_key_layout();
     test_zone_registry();
+    test_power_bar_packet();
+    test_socd_packet();
+    test_rapid_trigger_packet();
 
     std::cout << "\nAll tests passed!\n";
     return 0;

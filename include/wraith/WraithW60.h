@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "WraithW60Device.h"
 #include "WraithW60Leds.h"
@@ -37,6 +37,12 @@ public:
     WraithW60Error setUnderglow(LightingMode mode, uint8_t r, uint8_t g, uint8_t b, uint8_t speed = 0x80);
     LightingMode getUnderglowMode() const;
     Color getUnderglowColor() const;
+
+    WraithW60Error setPowerBarColor(uint8_t r, uint8_t g, uint8_t b);
+
+    WraithW60Error setSocd(bool enable);
+
+    WraithW60Error setRapidTrigger(uint8_t upThreshold, uint8_t downThreshold);
 
     WraithW60Error setKeyColor(uint8_t keyIndex, uint8_t r, uint8_t g, uint8_t b);
     WraithW60Error setAllKeys(const std::vector<Color>& colors);

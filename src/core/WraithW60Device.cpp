@@ -60,6 +60,34 @@ public:
         return WraithW60Error::success();
     }
 
+    WraithW60Error sendPowerBar(uint8_t r, uint8_t g, uint8_t b) {
+        uint8_t packet[protocol::REPORT_SIZE];
+        protocol::buildPowerBarPacket(packet, r, g, b);
+        if (!m_device->sendReport(protocol::REPORT_ID, packet + 1, protocol::PAYLOAD_SIZE))
+            return WraithW60Error::error(ErrorCode::SendFailed, "Power bar send failed");
+        m_state.powerBarColor = Color(r, g, b);
+        return WraithW60Error::success();
+    }
+
+    WraithW60Error sendSocd(bool enable) {
+        uint8_t packet[protocol::REPORT_SIZE];
+        protocol::buildSocdPacket(packet, enable);
+        if (!m_device->sendReport(protocol::REPORT_ID, packet + 1, protocol::PAYLOAD_SIZE))
+            return WraithW60Error::error(ErrorCode::SendFailed, "SOCD send failed");
+        m_state.socdEnabled = enable;
+        return WraithW60Error::success();
+    }
+
+    WraithW60Error sendRapidTrigger(uint8_t upThreshold, uint8_t downThreshold) {
+        uint8_t packet[protocol::REPORT_SIZE];
+        protocol::buildRapidTriggerPacket(packet, upThreshold, downThreshold);
+        if (!m_device->sendReport(protocol::REPORT_ID, packet + 1, protocol::PAYLOAD_SIZE))
+            return WraithW60Error::error(ErrorCode::SendFailed, "Rapid Trigger send failed");
+        m_state.rtUpThreshold = upThreshold;
+        m_state.rtDownThreshold = downThreshold;
+        return WraithW60Error::success();
+    }
+
     WraithW60Error sendPerKeyChunk(uint8_t chunkIndex, const std::vector<Color>& colors) {
         if (chunkIndex >= protocol::PER_KEY_TOTAL_CHUNKS)
             return WraithW60Error::error(ErrorCode::InvalidChunkIndex);
@@ -156,13 +184,24 @@ WraithW60Error WraithW60::setUnderglow(LightingMode mode, uint8_t r, uint8_t g, 
 LightingMode WraithW60::getUnderglowMode() const { return pImpl->m_state.underglowMode; }
 Color WraithW60::getUnderglowColor() const { return pImpl->m_state.underglowColor; }
 
+WraithW60Error WraithW60::setPowerBarColor(uint8_t r, uint8_t g, uint8_t b) {
+    return pImpl->sendPowerBar(r, g, b);
+}
+
+WraithW60Error WraithW60::setSocd(bool enable) {
+    return pImpl->sendSocd(enable);
+}
+
+WraithW60Error WraithW60::setRapidTrigger(uint8_t upThreshold, uint8_t downThreshold) {
+    return pImpl->sendRapidTrigger(upThreshold, downThreshold);
+}
+
 WraithW60Error WraithW60::setKeyColor(uint8_t keyIndex, uint8_t r, uint8_t g, uint8_t b) {
     if (keyIndex >= protocol::PER_KEY_TOTAL_KEYS)
         return WraithW60Error::error(ErrorCode::InvalidKeyIndex);
 
     pImpl->m_state.perKeyColors[keyIndex] = Color(r, g, b);
 
-    // Send only the changed chunk (preserves other keys' colors)
     uint8_t chunkIndex = keyIndex / static_cast<uint8_t>(protocol::PER_KEY_FULL_CHUNK_KEYS);
     bool isLast = (chunkIndex == protocol::PER_KEY_TOTAL_CHUNKS - 1);
     uint8_t keyCount = isLast ? 6 : static_cast<uint8_t>(protocol::PER_KEY_FULL_CHUNK_KEYS);

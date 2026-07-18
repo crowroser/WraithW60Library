@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -15,21 +15,19 @@ void printUsage() {
               << "  info                          Show device information\n"
               << "  backlight <mode> <R> <G> <B> [speed]   Set backlight\n"
               << "  underglow <mode> <R> <G> <B> [speed]   Set underglow\n"
+              << "  powerbar <R> <G> <B>           Set power bar color\n"
+              << "  socd <on|off>                  Enable/disable SOCD filter\n"
+              << "  rt <up> <down>                 Set rapid trigger thresholds (0-255)\n"
               << "  key <index> <R> <G> <B>       Set single key color\n"
               << "  all <R> <G> <B>               Set all keys to color\n"
               << "  range <start> <end> <R> <G> <B>  Set key range\n"
               << "  apply                         Apply changes\n"
               << "  modes                         List available modes\n"
               << "  enumerate                     List connected devices\n"
-              << "\nModes:\n"
-              << "  static, breathe, wave, neon, sparkle,\n"
-              << "  reactive, ripple, mod6, mod8, mod9,\n"
-              << "  mod11, mod12, mod14, mod15, mod16\n"
               << "\nExamples:\n"
-              << "  wraith_cli backlight static 255 0 0\n"
-              << "  wraith_cli key 0 0 255 0\n"
-              << "  wraith_cli all 255 255 255\n"
-              << "  wraith_cli range 0 12 255 0 0\n";
+              << "  wraith_cli powerbar 0 255 0 255 0 0   (top green, bottom red)\n"
+              << "  wraith_cli powerbar 255 255 255        (both white)\n"
+              << "  wraith_cli backlight static 255 0 0\n";
 }
 
 int main(int argc, char* argv[]) {
@@ -102,6 +100,14 @@ int main(int argc, char* argv[]) {
         auto err = device->setUnderglow(mi.mode, r, g, b, speed);
         std::cout << (err.isSuccess() ? "Underglow set successfully.\n" : ("Error: " + err.message() + "\n"));
     }
+    else if (command == "powerbar" && argc >= 5) {
+        uint8_t r = static_cast<uint8_t>(std::stoi(argv[2]));
+        uint8_t g = static_cast<uint8_t>(std::stoi(argv[3]));
+        uint8_t b = static_cast<uint8_t>(std::stoi(argv[4]));
+
+        auto err = device->setPowerBarColor(r, g, b);
+        std::cout << (err.isSuccess() ? "Power bar set successfully.\n" : ("Error: " + err.message() + "\n"));
+    }
     else if (command == "key" && argc >= 5) {
         uint8_t idx = static_cast<uint8_t>(std::stoi(argv[2]));
         uint8_t r = static_cast<uint8_t>(std::stoi(argv[3]));
@@ -133,6 +139,20 @@ int main(int argc, char* argv[]) {
     else if (command == "apply") {
         auto err = device->apply();
         std::cout << (err.isSuccess() ? "Applied.\n" : ("Error: " + err.message() + "\n"));
+    }
+    else if (command == "socd" && argc >= 3) {
+        std::string arg = argv[2];
+        bool enable = (arg == "on" || arg == "1" || arg == "true");
+        auto err = device->setSocd(enable);
+        std::cout << (err.isSuccess() ? ("SOCD " + std::string(enable ? "enabled" : "disabled") + ".\n")
+                                      : ("Error: " + err.message() + "\n"));
+    }
+    else if (command == "rt" && argc >= 4) {
+        uint8_t up = static_cast<uint8_t>(std::stoi(argv[2]));
+        uint8_t down = static_cast<uint8_t>(std::stoi(argv[3]));
+        auto err = device->setRapidTrigger(up, down);
+        std::cout << (err.isSuccess() ? ("Rapid Trigger set: up=" + std::to_string(up) + " down=" + std::to_string(down) + ".\n")
+                                      : ("Error: " + err.message() + "\n"));
     }
     else {
         printUsage();
